@@ -333,11 +333,12 @@ export default function StyleguidePage() {
                 マスクした項目（6件）: 田中彩 → 〘氏名1〙 ほか
               </span>
               <OutputActions
+                onEdit={() => toast("端末内で直接編集できます")}
+                onBackToForm={() => toast("フォームに戻って再生成します")}
+                onPdf={() => toast("印刷→PDF保存を開きます")}
                 onCopy={() =>
                   toast("クリップボードにコピーしました", "success")
                 }
-                onDownload={() => toast(".docx出力は Phase B で実装します")}
-                onRevise={() => toast("修正依頼フォームは Phase B で実装します")}
               />
             </div>
           }

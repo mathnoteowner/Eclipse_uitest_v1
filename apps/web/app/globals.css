@@ -86,3 +86,20 @@ body {
   background: var(--accent);
   color: var(--accent-foreground);
 }
+
+/* PDF出力（ブラウザの印刷→PDF保存）。本文以外を隠し、契約書本文のみを出力する。 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+  }
+  .print-target {
+    color: #000000;
+  }
+}
+
+@page {
+  margin: 20mm;
+}

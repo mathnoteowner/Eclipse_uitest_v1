@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function UsageMeter({
   used,
   limit,
-  label = "本日のAI生成",
+  label = "今月のAI生成",
   className,
 }: {
   used: number;

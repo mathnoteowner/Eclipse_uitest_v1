@@ -20,7 +20,7 @@ export function DocumentCard({
 }) {
   return (
     <section className={cn("rounded-xl border border-border bg-card", className)}>
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3">
+      <header className="no-print flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3">
         <h3 className="flex items-center gap-2 text-sm font-medium">
           <FileText aria-hidden className="size-4 text-primary" />
           {title}
@@ -36,7 +36,9 @@ export function DocumentCard({
         {children}
       </div>
       {footer && (
-        <footer className="border-t border-border px-5 py-3">{footer}</footer>
+        <footer className="no-print border-t border-border px-5 py-3">
+          {footer}
+        </footer>
       )}
     </section>
   );
