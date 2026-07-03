@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# builds
+build/
+dist/
+coverage/
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+*.log
+.DS_Store
+Thumbs.db
+.vercel
+.turbo
+
+# distributable build artifact (regenerate with: cd apps/web && npm run build)
+eclipse-uitest-site.zip
