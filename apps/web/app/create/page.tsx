@@ -8,7 +8,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { ContractEditor } from "@/components/contract-editor";
 import { DocumentCard } from "@/components/document-card";
+import { EditorDrawer } from "@/components/editor-drawer";
 import { Field } from "@/components/field";
 import { Highlighter } from "@/components/highlighter";
 import { OutputActions } from "@/components/output-actions";
@@ -77,7 +79,7 @@ export default function CreatePage() {
   const [phase, setPhase] = useState<Phase>("input");
   const [stage, setStage] = useState(0);
   const [result, setResult] = useState<ResultState | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editedText, setEditedText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState(() => getBillingService().getUsage());
@@ -145,14 +147,14 @@ export default function CreatePage() {
     setResult(null);
     setError(null);
     setErrors({});
-    setEditing(false);
+    setEditorOpen(false);
     setEditedText(null);
     registryRef.current = null;
   }, []);
 
   const backToForm = useCallback(() => {
     setPhase("input");
-    setEditing(false);
+    setEditorOpen(false);
     setEditedText(null);
     setError(null);
     setCameFromResult(true); // 追加指示欄にフォーカス
@@ -240,7 +242,7 @@ export default function CreatePage() {
         unresolved: [...new Set([...unresolved, ...verify.unknown])],
         maskedDraft: gen.maskedDraft,
       });
-      setEditing(false);
+      setEditorOpen(false);
       setEditedText(null);
       setPhase("done");
     } catch (e) {
@@ -281,7 +283,7 @@ export default function CreatePage() {
           className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
         >
           <Moon aria-hidden className="size-5 text-primary" />
-          Eclipse
+          AI書面くん
         </Link>
         <div className="flex items-center gap-3">
           <Link
@@ -334,13 +336,13 @@ export default function CreatePage() {
             label="AIへの追加指示（任意）"
             htmlFor="f-note"
             className="mt-4"
-            hint="AIに追加で反映してほしい条件を、箇条書きや短い文で指示できます（例：条項の追加・期間や金額の調整）。これは生成ドラフトのための指示であり、個別の法的助言ではありません。含まれる個人情報は送信前に端末内で自動マスクされます。"
+            hint="ここに書いた文章は、そのままAIへの指示として送られます。「〜してください」の形で、条項の追加や期間・金額の調整などを伝えられます。個別の法的助言ではありません。含まれる個人情報は送信前に端末内で自動マスクされます。"
           >
             <Textarea
               id="f-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="例：契約期間は6ヶ月に。検収は納品後5営業日以内に。請求書は田中彩様宛てに。"
+              placeholder="「契約期間を6ヶ月に変更してください」「請求書の送付先は田中彩様にしてください」"
             />
           </Field>
           {note.trim() && noteSpans.length > 0 && (
@@ -366,8 +368,8 @@ export default function CreatePage() {
                   <p className="text-xs text-muted-foreground">月払い</p>
                   <p className="text-sm font-medium">月額 780円</p>
                 </div>
-                <div className="relative rounded-md border-2 border-primary bg-accent px-4 py-2">
-                  <span className="absolute -top-2 left-3 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                <div className="relative rounded-md border-2 border-accent-amber bg-accent px-4 py-2">
+                  <span className="absolute -top-2 left-3 rounded bg-accent-amber px-1.5 py-0.5 text-[10px] font-medium text-accent-amber-foreground">
                     おすすめ
                   </span>
                   <p className="text-xs text-accent-foreground">年払い</p>
@@ -523,12 +525,11 @@ export default function CreatePage() {
                     </span>
                   )}
                   <OutputActions
-                    editing={editing}
                     onEdit={() => {
                       setEditedText((prev) =>
                         prev == null ? result.restored : prev,
                       );
-                      setEditing((v) => !v);
+                      setEditorOpen(true);
                     }}
                     onBackToForm={backToForm}
                     onPdf={() => window.print()}
@@ -541,18 +542,7 @@ export default function CreatePage() {
               </div>
             }
           >
-            <div className="no-print">
-              {editing ? (
-                <Textarea
-                  aria-label="生成された文書"
-                  value={displayedText}
-                  onChange={(e) => setEditedText(e.target.value)}
-                  className="min-h-[28rem] font-serif text-[15px] leading-8"
-                />
-              ) : (
-                <div className="whitespace-pre-wrap">{displayedText}</div>
-              )}
-            </div>
+            <div className="no-print whitespace-pre-wrap">{displayedText}</div>
             <div className="print-target hidden whitespace-pre-wrap print:block">
               {displayedText}
             </div>
@@ -565,6 +555,18 @@ export default function CreatePage() {
           </div>
         </section>
       )}
+
+      <EditorDrawer
+        open={editorOpen}
+        title="契約書を編集"
+        onClose={() => setEditorOpen(false)}
+      >
+        <ContractEditor
+          value={displayedText}
+          onChange={(v) => setEditedText(v)}
+          onPdf={() => window.print()}
+        />
+      </EditorDrawer>
     </main>
   );
 }

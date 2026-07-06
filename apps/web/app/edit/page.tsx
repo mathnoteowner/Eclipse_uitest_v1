@@ -1,26 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  BookText,
-  Copy,
-  History,
-  Moon,
-  Printer,
-  Save,
-  Undo2,
-  Wand2,
-} from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { History, Moon } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { ContractEditor } from "@/components/contract-editor";
 import { DocumentImporter } from "@/components/edit/document-importer";
-import { SnippetPicker } from "@/components/edit/snippet-picker";
-import { insertAtCursor } from "@/lib/edit/docx";
-import { formatDocument } from "@/lib/edit/format";
 import { getHistoryService } from "@/lib/services/factory";
 import { deriveTitle } from "@/lib/services/history";
 
@@ -32,51 +20,17 @@ const MODE_OPTIONS: { value: "create" | "edit"; label: string }[] = [
 /**
  * 文書修正エディタ。
  * ★AIには一切送信しない（generation/billing/mask を import しないことで担保）。
- *   取込・整形・定型文挿入・編集・出力のすべてが端末内で完結する。
+ *   取込・清書・定型文挿入・編集・出力のすべてが端末内で完結する。
  */
 export default function EditPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [text, setText] = useState("");
-  const [prevText, setPrevText] = useState<string | null>(null);
-  const [showSnippets, setShowSnippets] = useState(false);
   const [lastSavedText, setLastSavedText] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleImport = (imported: string, fileName: string) => {
-    setPrevText(text.trim() ? text : null);
     setText(imported);
     toast(`「${fileName}」を読み込みました`, "success");
-  };
-
-  const handleFormat = () => {
-    const next = formatDocument(text);
-    if (next === text) {
-      toast("整形の必要はありませんでした");
-      return;
-    }
-    setPrevText(text);
-    setText(next);
-    toast("文書を整形しました", "success");
-  };
-
-  const handleUndo = () => {
-    if (prevText == null) return;
-    setText(prevText);
-    setPrevText(null);
-  };
-
-  const insertSnippet = (body: string) => {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? text.length;
-    const end = el?.selectionEnd ?? text.length;
-    const res = insertAtCursor(text, body, start, end);
-    setPrevText(text);
-    setText(res.text);
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(res.caret, res.caret);
-    });
   };
 
   /** 履歴へ保存（同一内容の重複保存はしない） */
@@ -112,7 +66,7 @@ export default function EditPage() {
             className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
           >
             <Moon aria-hidden className="size-5 text-primary" />
-            Eclipse
+            AI書面くん
           </Link>
           <Link
             href="/history"
@@ -137,89 +91,20 @@ export default function EditPage() {
           />
         </div>
 
-        <section className="mt-5 rounded-xl border border-border bg-card p-5 sm:p-6">
-          <DocumentImporter onImport={handleImport} />
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              id="btn-format"
-              variant="secondary"
-              size="sm"
-              disabled={!text.trim()}
-              onClick={handleFormat}
-            >
-              <Wand2 aria-hidden /> 整形
-            </Button>
-            <Button
-              id="btn-undo"
-              variant="ghost"
-              size="sm"
-              disabled={prevText == null}
-              onClick={handleUndo}
-            >
-              <Undo2 aria-hidden /> 元に戻す
-            </Button>
-            <Button
-              id="btn-snippets"
-              variant={showSnippets ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowSnippets((v) => !v)}
-            >
-              <BookText aria-hidden /> 定型文
-            </Button>
+        <section className="mt-5 overflow-hidden rounded-xl border border-border bg-card">
+          <div className="border-b border-border p-5 sm:p-6">
+            <DocumentImporter onImport={handleImport} />
           </div>
-
-          {showSnippets && <SnippetPicker onInsert={insertSnippet} />}
-
-          <Textarea
-            id="f-doc"
-            ref={textareaRef}
+          <ContractEditor
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="ここに文書を貼り付けるか、上のファイル読み込みをお使いください。"
-            className="mt-3 min-h-[26rem] font-serif text-[15px] leading-8"
+            onChange={setText}
+            onSave={() => saveToHistory(true)}
+            onCopy={() => saveToHistory(false)}
+            onPdf={() => {
+              saveToHistory(false);
+              window.print();
+            }}
           />
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">
-              処理はすべてこの端末内で行われます。
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                id="btn-save-history"
-                variant="ghost"
-                size="sm"
-                disabled={!text.trim()}
-                onClick={() => saveToHistory(true)}
-              >
-                <Save aria-hidden /> 履歴に保存
-              </Button>
-              <Button
-                id="btn-pdf"
-                variant="secondary"
-                size="sm"
-                disabled={!text.trim()}
-                onClick={() => {
-                  saveToHistory(false);
-                  window.print();
-                }}
-              >
-                <Printer aria-hidden /> PDFで保存
-              </Button>
-              <Button
-                id="btn-copy"
-                size="sm"
-                disabled={!text.trim()}
-                onClick={async () => {
-                  await navigator.clipboard.writeText(text);
-                  saveToHistory(false);
-                  toast("クリップボードにコピーしました", "success");
-                }}
-              >
-                <Copy aria-hidden /> コピー
-              </Button>
-            </div>
-          </div>
         </section>
       </div>
 

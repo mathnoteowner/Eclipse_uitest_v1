@@ -18,9 +18,9 @@ const notoSerif = Noto_Serif_JP({
 });
 
 export const metadata: Metadata = {
-  title: "Eclipse — クライアント情報を渡さずに、AIで契約書を作る",
+  title: "AI書面くん",
   description:
-    "入力した社名・氏名・金額・住所は端末内で自動マスク。マスク済みテキストだけをAIに送り、完成した契約書を安全に受け取れます。",
+    "入力した社名・氏名・金額は、この端末の中でマスクしてからAIに送ります。フリーランスの契約書・文書を作成・編集できます。",
 };
 
 export default function RootLayout({
