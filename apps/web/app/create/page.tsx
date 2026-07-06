@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FilePlus2, History, Moon, RotateCcw } from "lucide-react";
+import { FilePlus2, FileText, History, RotateCcw } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
@@ -282,7 +282,7 @@ export default function CreatePage() {
           href="/"
           className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
         >
-          <Moon aria-hidden className="size-5 text-primary" />
+          <FileText aria-hidden className="size-5 text-primary" />
           AI書面くん
         </Link>
         <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function CreatePage() {
             label="AIへの追加指示（任意）"
             htmlFor="f-note"
             className="mt-4"
-            hint="ここに書いた文章は、そのままAIへの指示として送られます。「〜してください」の形で、条項の追加や期間・金額の調整などを伝えられます。個別の法的助言ではありません。含まれる個人情報は送信前に端末内で自動マスクされます。"
+            hint="ここに書いた文章は、そのままAIへの指示として送られます。個別の法的助言ではありません。含まれる個人情報は送信前に端末内で自動マスクされます。"
           >
             <Textarea
               id="f-note"

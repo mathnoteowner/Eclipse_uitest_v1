@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Moon } from "lucide-react";
+import { FileText } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function Home() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
       <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-        <Moon aria-hidden className="size-7 text-primary" />
+        <FileText aria-hidden className="size-7 text-primary" />
         AI書面くん
       </h1>
       <p className="max-w-md text-sm leading-7 text-muted-foreground">

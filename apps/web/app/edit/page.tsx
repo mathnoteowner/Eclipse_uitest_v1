@@ -3,12 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { History, Moon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { Copy, FileText, History, Pencil, PenLine, Printer, Save } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useToast } from "@/components/ui/toast";
 import { ContractEditor } from "@/components/contract-editor";
+import { DocumentCard } from "@/components/document-card";
 import { DocumentImporter } from "@/components/edit/document-importer";
+import { EditorDrawer } from "@/components/editor-drawer";
+import { EmptyState } from "@/components/status";
 import { getHistoryService } from "@/lib/services/factory";
 import { deriveTitle } from "@/lib/services/history";
 
@@ -26,6 +29,7 @@ export default function EditPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [text, setText] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
   const [lastSavedText, setLastSavedText] = useState<string | null>(null);
 
   const handleImport = (imported: string, fileName: string) => {
@@ -65,7 +69,7 @@ export default function EditPage() {
             href="/"
             className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
           >
-            <Moon aria-hidden className="size-5 text-primary" />
+            <FileText aria-hidden className="size-5 text-primary" />
             AI書面くん
           </Link>
           <Link
@@ -91,26 +95,88 @@ export default function EditPage() {
           />
         </div>
 
-        <section className="mt-5 overflow-hidden rounded-xl border border-border bg-card">
-          <div className="border-b border-border p-5 sm:p-6">
-            <DocumentImporter onImport={handleImport} />
-          </div>
-          <ContractEditor
-            value={text}
-            onChange={setText}
-            onSave={() => saveToHistory(true)}
-            onCopy={() => saveToHistory(false)}
-            onPdf={() => {
-              saveToHistory(false);
-              window.print();
-            }}
-          />
+        <section className="mt-5 rounded-xl border border-border bg-card p-5 sm:p-6">
+          <DocumentImporter onImport={handleImport} />
         </section>
+
+        {text.trim() ? (
+          <DocumentCard
+            title="編集中の文書"
+            className="mt-5"
+            footer={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditorOpen(true)}
+                >
+                  <Pencil aria-hidden /> 編集
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => saveToHistory(true)}
+                >
+                  <Save aria-hidden /> 履歴に保存
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    saveToHistory(false);
+                    window.print();
+                  }}
+                >
+                  <Printer aria-hidden /> PDFで保存
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(text);
+                    saveToHistory(false);
+                    toast("クリップボードにコピーしました", "success");
+                  }}
+                >
+                  <Copy aria-hidden /> コピー
+                </Button>
+              </div>
+            }
+          >
+            <div className="no-print whitespace-pre-wrap">{text}</div>
+            <div className="print-target hidden whitespace-pre-wrap print:block">
+              {text}
+            </div>
+          </DocumentCard>
+        ) : (
+          <EmptyState
+            className="mt-5"
+            title="編集する文書がまだありません"
+            description="上でファイルを取り込むか、白紙から書き始められます。"
+            action={
+              <Button size="sm" onClick={() => setEditorOpen(true)}>
+                <PenLine aria-hidden /> 白紙から編集を始める
+              </Button>
+            }
+          />
+        )}
       </div>
 
-      <div className="print-target hidden whitespace-pre-wrap font-serif text-[15px] leading-8 print:block">
-        {text}
-      </div>
+      <EditorDrawer
+        open={editorOpen}
+        title="文書を編集"
+        onClose={() => setEditorOpen(false)}
+      >
+        <ContractEditor
+          value={text}
+          onChange={setText}
+          onSave={() => saveToHistory(true)}
+          onCopy={() => saveToHistory(false)}
+          onPdf={() => {
+            saveToHistory(false);
+            window.print();
+          }}
+        />
+      </EditorDrawer>
     </main>
   );
 }

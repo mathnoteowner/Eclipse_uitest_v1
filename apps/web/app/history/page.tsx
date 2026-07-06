@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FilePlus2, Moon, Pencil, Trash2 } from "lucide-react";
+import { FilePlus2, FileText, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -88,7 +88,7 @@ export default function HistoryPage() {
             href="/"
             className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
           >
-            <Moon aria-hidden className="size-5 text-primary" />
+            <FileText aria-hidden className="size-5 text-primary" />
             AI書面くん
           </Link>
           <Link
