@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FilePlus2, History, Moon, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -26,6 +27,7 @@ import { detectPII, resolveOverlaps } from "@/lib/services/detection";
 import {
   getBillingService,
   getGenerationService,
+  getHistoryService,
   getNerService,
   getProfileService,
 } from "@/lib/services/factory";
@@ -48,7 +50,11 @@ const DOC_TYPE_OPTIONS = (
   Object.entries(DOC_TYPE_LABELS) as [DocType, string][]
 ).map(([value, label]) => ({ value, label }));
 
-type Mode = "create" | "edit";
+const MODE_OPTIONS: { value: "create" | "edit"; label: string }[] = [
+  { value: "create", label: "新規作成" },
+  { value: "edit", label: "文書を修正" },
+];
+
 type Phase = "input" | "confirm" | "working" | "done";
 
 interface ResultState {
@@ -63,13 +69,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function CreatePage() {
   const { toast } = useToast();
-  const [mode, setMode] = useState<Mode>("create");
+  const router = useRouter();
   const [docType, setDocType] = useState<DocType>("gyomu_itaku");
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
-  const [editSource, setEditSource] = useState("");
-  const [instruction, setInstruction] = useState("");
   const [phase, setPhase] = useState<Phase>("input");
   const [stage, setStage] = useState(0);
   const [result, setResult] = useState<ResultState | null>(null);
@@ -77,6 +81,7 @@ export default function CreatePage() {
   const [editedText, setEditedText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState(() => getBillingService().getUsage());
+  // 配布版はテスター向けに既定で開発マーカー非表示。開発時は ?present=0 で表示。
   const [presentMode, setPresentMode] = useState(true);
   const [cameFromResult, setCameFromResult] = useState(false);
   const registryRef = useRef<MaskRegistry | null>(null);
@@ -102,7 +107,7 @@ export default function CreatePage() {
     }
   }, []);
 
-  // フォームに戻って再生成で戻ってきた時のみ、補足欄へフォーカス。
+  // フォームに戻って再生成で戻ってきた時のみ、追加指示欄へフォーカス。
   useEffect(() => {
     if (phase === "input" && cameFromResult) {
       document.getElementById("f-note")?.focus();
@@ -112,13 +117,11 @@ export default function CreatePage() {
 
   const defs = DOC_FORMS[docType];
   const noteSpans = useMemo(() => detectPII(note), [note]);
-  const sourceSpans = useMemo(() => detectPII(editSource), [editSource]);
   const notePreview = useMemo(() => buildMaskPreview(note), [note]);
   const quotaExhausted = usage.used >= usage.limit;
   const displayedText = result
     ? resolveDisplayedText(editedText, result.restored)
     : "";
-  const editCanRun = editSource.trim().length > 0 && instruction.trim().length > 0;
 
   const changeDocType = (t: DocType) => {
     setDocType(t);
@@ -152,7 +155,7 @@ export default function CreatePage() {
     setEditing(false);
     setEditedText(null);
     setError(null);
-    setCameFromResult(true); // 補足欄にフォーカス
+    setCameFromResult(true); // 追加指示欄にフォーカス
   }, []);
 
   /** 自由記述のマスク（端末内regex＋必要ならNER） */
@@ -178,36 +181,28 @@ export default function CreatePage() {
     setStage(0);
     try {
       const reg = new MaskRegistry();
-      const title = mode === "edit" ? "修正版ドラフト" : DOC_TYPE_LABELS[docType];
-      let input: GenerateInput;
-      if (mode === "create") {
-        const profile = getProfileService().get();
-        const fields: Record<string, string> = {
-          self: maskWholeValue(profile.name, "PERSON", reg),
-          selfShop: maskWholeValue(profile.shopName, "ORG", reg),
-        };
-        for (const def of defs) {
-          const raw = (values[def.key] ?? "").trim();
-          if (!raw) continue;
-          fields[def.key] = def.entity
-            ? maskWholeValue(raw, def.entity, reg)
-            : maskText(raw, detectPII(raw), reg);
-        }
-        const maskedNote = note.trim()
-          ? await maskFree(note, reg, true)
-          : undefined;
-        input = { docType, mode: "create", fields, maskedNote };
-      } else {
-        const maskedSource = await maskFree(editSource, reg, true);
-        const maskedInstruction = await maskFree(instruction, reg, true);
-        input = {
-          docType,
-          mode: "edit",
-          fields: {},
-          maskedSource,
-          maskedInstruction,
-        };
+      const title = DOC_TYPE_LABELS[docType];
+      const profile = getProfileService().get();
+      const fields: Record<string, string> = {
+        self: maskWholeValue(profile.name, "PERSON", reg),
+        selfShop: maskWholeValue(profile.shopName, "ORG", reg),
+      };
+      for (const def of defs) {
+        const raw = (values[def.key] ?? "").trim();
+        if (!raw) continue;
+        fields[def.key] = def.entity
+          ? maskWholeValue(raw, def.entity, reg)
+          : maskText(raw, detectPII(raw), reg);
       }
+      const maskedNote = note.trim()
+        ? await maskFree(note, reg, true)
+        : undefined;
+      const input: GenerateInput = {
+        docType,
+        mode: "create",
+        fields,
+        maskedNote,
+      };
       await sleep(500);
 
       setStage(1);
@@ -230,6 +225,13 @@ export default function CreatePage() {
       // ★消費は生成成功後（失敗時は消費しない）
       const consumed = billing.consume();
       setUsage(consumed.usage);
+      // ★履歴へ自動保存（端末内のみ・対応表は保存しない）
+      getHistoryService().save({
+        kind: "create",
+        docType,
+        title,
+        text: restored,
+      });
       registryRef.current = reg;
       setResult({
         title,
@@ -249,31 +251,26 @@ export default function CreatePage() {
           : "生成に失敗しました。もう一度お試しください。",
       );
     }
-  }, [defs, docType, editSource, instruction, maskFree, mode, note, phase, values]);
+  }, [defs, docType, maskFree, note, phase, values]);
 
   const onPrimarySubmit = () => {
     if (quotaExhausted) return;
-    if (mode === "create") {
-      const missing = computeMissing(defs, values);
-      if (missing.length > 0) {
-        const next: Record<string, string> = {};
-        for (const m of missing) next[m.key] = "必須項目です。";
-        setErrors(next);
-        const el = document.getElementById(`f-${missing[0].key}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        (el as HTMLElement | null)?.focus?.({ preventScroll: true });
-        return;
-      }
-      // 補足欄に入力がある時だけ送信前確認を挟む
-      if (note.trim()) {
-        setPhase("confirm");
-        return;
-      }
-      void run();
-    } else {
-      if (!editCanRun) return;
-      void run();
+    const missing = computeMissing(defs, values);
+    if (missing.length > 0) {
+      const next: Record<string, string> = {};
+      for (const m of missing) next[m.key] = "必須項目です。";
+      setErrors(next);
+      const el = document.getElementById(`f-${missing[0].key}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as HTMLElement | null)?.focus?.({ preventScroll: true });
+      return;
     }
+    // 追加指示欄に入力がある時だけ送信前確認を挟む
+    if (note.trim()) {
+      setPhase("confirm");
+      return;
+    }
+    void run();
   };
 
   return (
@@ -287,13 +284,12 @@ export default function CreatePage() {
           Eclipse
         </Link>
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => toast("履歴は近日提供予定です")}
+          <Link
+            href="/history"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <History aria-hidden /> 履歴
-          </Button>
+          </Link>
           <div className="w-40">
             <UsageMeter used={usage.used} limit={usage.limit} />
           </div>
@@ -303,102 +299,61 @@ export default function CreatePage() {
       {phase !== "done" && (
         <>
           <h1 className="mt-6 text-2xl font-bold tracking-tight">
-            {mode === "create" ? "契約書を作成" : "文書を修正"}
+            契約書を作成
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "create"
-              ? "文書タイプを選んで、内容を入力してください。"
-              : "既存の文書を貼り付けて、修正指示を入力してください。"}
+            文書タイプを選んで、内容を入力してください。
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <SegmentedControl
-              value={mode}
+              value={"create" as "create" | "edit"}
               onChange={(m) => {
-                setMode(m);
-                resetAll();
+                if (m === "edit") router.push("/edit");
               }}
-              options={[
-                { value: "create", label: "新規作成" },
-                { value: "edit", label: "文書を修正" },
-              ]}
+              options={MODE_OPTIONS}
             />
-            {mode === "create" && (
-              <SegmentedControl
-                value={docType}
-                onChange={changeDocType}
-                options={DOC_TYPE_OPTIONS}
-              />
-            )}
+            <SegmentedControl
+              value={docType}
+              onChange={changeDocType}
+              options={DOC_TYPE_OPTIONS}
+            />
           </div>
         </>
       )}
 
       {phase === "input" && (
         <section className="mt-5 rounded-xl border border-border bg-card p-5 sm:p-6">
-          {mode === "create" ? (
-            <>
-              <GuidedFields
-                defs={defs}
-                values={values}
-                errors={errors}
-                onChange={onFieldChange}
+          <GuidedFields
+            defs={defs}
+            values={values}
+            errors={errors}
+            onChange={onFieldChange}
+          />
+          <Field
+            label="AIへの追加指示（任意）"
+            htmlFor="f-note"
+            className="mt-4"
+            hint="AIに追加で反映してほしい条件を、箇条書きや短い文で指示できます（例：条項の追加・期間や金額の調整）。これは生成ドラフトのための指示であり、個別の法的助言ではありません。含まれる個人情報は送信前に端末内で自動マスクされます。"
+          >
+            <Textarea
+              id="f-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="例：契約期間は6ヶ月に。検収は納品後5営業日以内に。請求書は田中彩様宛てに。"
+            />
+          </Field>
+          {note.trim() && noteSpans.length > 0 && (
+            <div className="mt-3 rounded-md bg-muted/60 p-3">
+              <p className="mb-1 text-xs text-muted-foreground">
+                端末内検出（{noteSpans.length}件）— マスク対象
+              </p>
+              <Highlighter
+                text={note}
+                spans={noteSpans}
+                className="text-[13px]"
               />
-              <Field
-                label="反映したい条件・補足（任意）"
-                htmlFor="f-note"
-                className="mt-4"
-                hint="ここに書いた内容は本文に反映されます。作成後は『フォームに戻って再生成』で追記できます。含まれる個人情報は端末内で自動マスクされます。"
-              >
-                <Textarea
-                  id="f-note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="例：契約期間を6ヶ月に。検収は納品後5営業日以内。請求書は田中彩様宛て。"
-                />
-              </Field>
-              {note.trim() && noteSpans.length > 0 && (
-                <div className="mt-3 rounded-md bg-muted/60 p-3">
-                  <p className="mb-1 text-xs text-muted-foreground">
-                    端末内検出（{noteSpans.length}件）— マスク対象
-                  </p>
-                  <Highlighter
-                    text={note}
-                    spans={noteSpans}
-                    className="text-[13px]"
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <Field
-                label="修正する文書"
-                htmlFor="f-source"
-                hint="テキストの貼り付けに対応。.docx取込は後続フェーズで追加予定。"
-              >
-                <Textarea
-                  id="f-source"
-                  value={editSource}
-                  onChange={(e) => setEditSource(e.target.value)}
-                  className="min-h-48 font-serif"
-                  placeholder="ここに既存の契約書・文書を貼り付け"
-                />
-              </Field>
-              {editSource.trim() && sourceSpans.length > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  端末内検出: {sourceSpans.length}件
-                </p>
-              )}
-              <Field label="修正指示" htmlFor="f-instruction" className="mt-4">
-                <Textarea
-                  id="f-instruction"
-                  value={instruction}
-                  onChange={(e) => setInstruction(e.target.value)}
-                  placeholder="例：契約期間を6ヶ月に延長し、中途解約条項を追加してください。"
-                />
-              </Field>
-            </>
+            </div>
           )}
 
           {quotaExhausted && (
@@ -455,19 +410,14 @@ export default function CreatePage() {
             />
           )}
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">
-              {mode === "edit" && !editCanRun
-                ? "文書と修正指示を入力してください"
-                : ""}
-            </p>
+          <div className="mt-5 flex justify-end border-t border-border pt-4">
             <Button
               id="btn-generate"
               size="lg"
-              disabled={quotaExhausted || (mode === "edit" && !editCanRun)}
+              disabled={quotaExhausted}
               onClick={onPrimarySubmit}
             >
-              {mode === "create" ? "マスクして作成" : "マスクして修正"}
+              マスクして作成
             </Button>
           </div>
         </section>
@@ -478,12 +428,12 @@ export default function CreatePage() {
           <div>
             <h2 className="text-lg font-bold tracking-tight">送信内容の確認</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              補足欄は自動検出でマスクします。下記の内容でAIに送信します（人名・社名の高精度検出（NER）は送信時に適用されます）。
+              追加指示は自動検出でマスクします。下記の内容でAIに送信します（人名・社名の高精度検出（NER）は送信時に適用されます）。
             </p>
           </div>
           <div className="rounded-md bg-muted/60 p-3">
             <p className="mb-1 text-xs text-muted-foreground">
-              補足欄・マスク後のプレビュー
+              追加指示・マスク後のプレビュー
             </p>
             <p className="whitespace-pre-wrap text-sm text-foreground">
               {notePreview.masked}
@@ -511,7 +461,7 @@ export default function CreatePage() {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              補足欄にマスク対象は検出されませんでした。
+              追加指示にマスク対象は検出されませんでした。
             </p>
           )}
           <div className="flex items-center justify-between border-t border-border pt-4">
@@ -564,21 +514,30 @@ export default function CreatePage() {
                     ))}
                   </ul>
                 </details>
-                <OutputActions
-                  editing={editing}
-                  onEdit={() => {
-                    setEditedText((prev) =>
-                      prev == null ? result.restored : prev,
-                    );
-                    setEditing((v) => !v);
-                  }}
-                  onBackToForm={backToForm}
-                  onPdf={() => window.print()}
-                  onCopy={async () => {
-                    await navigator.clipboard.writeText(displayedText);
-                    toast("クリップボードにコピーしました", "success");
-                  }}
-                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {presentMode ? (
+                    <span />
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">
+                      モック生成 — Phase HでClaude APIに接続
+                    </span>
+                  )}
+                  <OutputActions
+                    editing={editing}
+                    onEdit={() => {
+                      setEditedText((prev) =>
+                        prev == null ? result.restored : prev,
+                      );
+                      setEditing((v) => !v);
+                    }}
+                    onBackToForm={backToForm}
+                    onPdf={() => window.print()}
+                    onCopy={async () => {
+                      await navigator.clipboard.writeText(displayedText);
+                      toast("クリップボードにコピーしました", "success");
+                    }}
+                  />
+                </div>
               </div>
             }
           >

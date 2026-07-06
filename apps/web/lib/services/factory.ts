@@ -1,6 +1,8 @@
 import type { BillingService } from "./billing";
 import { MockBillingService } from "./billing/billing.mock";
 import type { GenerationService } from "./generation";
+import type { HistoryService } from "./history";
+import { LocalHistoryService } from "./history/history.local";
 import { MockGenerationService } from "./generation/gen.mock";
 import type { NerService } from "./ner";
 import { MockNerService } from "./ner/ner.mock";
@@ -41,4 +43,12 @@ export function getBillingService(): BillingService {
 export function getProfileService(): ProfileService {
   profile ??= useMocks ? new MockProfileService() : notImplemented("ProfileService");
   return profile;
+}
+
+let history: HistoryService | null = null;
+
+/** 履歴は端末内 localStorage 固定（mock/real の区別なし） */
+export function getHistoryService(): HistoryService {
+  history ??= new LocalHistoryService();
+  return history;
 }
