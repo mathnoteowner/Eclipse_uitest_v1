@@ -103,7 +103,7 @@ export default function EditPage() {
           <DocumentCard
             title="編集中の文書"
             className="mt-5"
-            footer={
+            actions={
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="secondary"

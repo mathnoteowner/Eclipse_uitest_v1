@@ -4,16 +4,20 @@ import { cn } from "@/lib/utils";
 
 /**
  * 生成・改訂した文書の表示カード。本文はセリフ体で“契約書らしさ”を出す。
+ * 主要操作は actions（ヘッダー直下）に置き、下までスクロールしなくても押せるようにする。
+ * 本文は最大高さ内でスクロールし、印刷時は制約を解除して全文を出力する。
  */
 export function DocumentCard({
   title,
   maskedCount,
+  actions,
   children,
   footer,
   className,
 }: {
   title: string;
   maskedCount?: number;
+  actions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
@@ -32,7 +36,12 @@ export function DocumentCard({
           </span>
         )}
       </header>
-      <div className="px-6 py-5 font-serif text-[15px] leading-8 text-foreground">
+      {actions && (
+        <div className="no-print flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+          {actions}
+        </div>
+      )}
+      <div className="max-h-[60vh] overflow-y-auto px-6 py-5 font-serif text-[15px] leading-8 text-foreground print:max-h-none print:overflow-visible">
         {children}
       </div>
       {footer && (

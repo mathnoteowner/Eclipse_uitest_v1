@@ -498,48 +498,48 @@ export default function CreatePage() {
           <DocumentCard
             title={result.title}
             maskedCount={result.entries.length}
-            footer={
-              <div className="space-y-3">
-                <details className="text-xs text-muted-foreground">
-                  <summary className="cursor-pointer select-none">
-                    マスクした項目（{result.entries.length}件）— 対応表は端末内のみ
-                  </summary>
-                  <ul className="mt-2 space-y-1.5">
-                    {result.entries.map((e) => (
-                      <li key={e.placeholder} className="flex items-center gap-2">
-                        <span className="rounded bg-eclipse px-1.5 py-0.5 text-[11px] font-medium text-eclipse-foreground">
-                          {e.placeholder}
-                        </span>
-                        <span aria-hidden>→</span>
-                        <span className="text-foreground">{e.original}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  {presentMode ? (
-                    <span />
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground">
-                      モック生成 — Phase HでClaude APIに接続
-                    </span>
-                  )}
-                  <OutputActions
-                    onEdit={() => {
-                      setEditedText((prev) =>
-                        prev == null ? result.restored : prev,
-                      );
-                      setEditorOpen(true);
-                    }}
-                    onBackToForm={backToForm}
-                    onPdf={() => window.print()}
-                    onCopy={async () => {
-                      await navigator.clipboard.writeText(displayedText);
-                      toast("クリップボードにコピーしました", "success");
-                    }}
-                  />
-                </div>
+            actions={
+              <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                {presentMode ? (
+                  <span />
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">
+                    モック生成 — Phase HでClaude APIに接続
+                  </span>
+                )}
+                <OutputActions
+                  onEdit={() => {
+                    setEditedText((prev) =>
+                      prev == null ? result.restored : prev,
+                    );
+                    setEditorOpen(true);
+                  }}
+                  onBackToForm={backToForm}
+                  onPdf={() => window.print()}
+                  onCopy={async () => {
+                    await navigator.clipboard.writeText(displayedText);
+                    toast("クリップボードにコピーしました", "success");
+                  }}
+                />
               </div>
+            }
+            footer={
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer select-none">
+                  マスクした項目（{result.entries.length}件）— 対応表は端末内のみ
+                </summary>
+                <ul className="mt-2 space-y-1.5">
+                  {result.entries.map((e) => (
+                    <li key={e.placeholder} className="flex items-center gap-2">
+                      <span className="rounded bg-eclipse px-1.5 py-0.5 text-[11px] font-medium text-eclipse-foreground">
+                        {e.placeholder}
+                      </span>
+                      <span aria-hidden>→</span>
+                      <span className="text-foreground">{e.original}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             }
           >
             <div className="no-print whitespace-pre-wrap">{displayedText}</div>

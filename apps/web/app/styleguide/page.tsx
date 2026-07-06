@@ -322,25 +322,25 @@ export default function StyleguidePage() {
 
       <Section
         title="10. DocumentCard ＋ OutputActions"
-        description="完成文書の表示。本文はセリフ体、ヘッダーに保護実績、フッターに出力アクション。"
+        description="完成文書の表示。本文はセリフ体、操作はヘッダー直下（スクロール不要）、詳細情報はフッターに。"
       >
         <DocumentCard
           title={DOC_TYPE_LABELS[docType]}
           maskedCount={6}
+          actions={
+            <OutputActions
+              onEdit={() => toast("端末内で直接編集できます")}
+              onBackToForm={() => toast("フォームに戻って再生成します")}
+              onPdf={() => toast("印刷→PDF保存を開きます")}
+              onCopy={() =>
+                toast("クリップボードにコピーしました", "success")
+              }
+            />
+          }
           footer={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                マスクした項目（6件）: 田中彩 → 〘氏名1〙 ほか
-              </span>
-              <OutputActions
-                onEdit={() => toast("端末内で直接編集できます")}
-                onBackToForm={() => toast("フォームに戻って再生成します")}
-                onPdf={() => toast("印刷→PDF保存を開きます")}
-                onCopy={() =>
-                  toast("クリップボードにコピーしました", "success")
-                }
-              />
-            </div>
+            <span className="text-xs text-muted-foreground">
+              マスクした項目（6件）: 田中彩 → 〘氏名1〙 ほか
+            </span>
           }
         >
           <p className="mb-3 text-center font-semibold">業務委託契約書</p>
