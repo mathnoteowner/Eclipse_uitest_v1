@@ -208,6 +208,8 @@ export class MockGenerationService implements GenerationService {
             input.maskedInstruction,
           );
           break;
+        default:
+          throw new Error("文書タイプが指定されていません。");
       }
     }
     return { maskedDraft, model: "mock-template-v1" };

@@ -106,7 +106,7 @@ export default function StyleguidePage() {
           <ArrowLeft aria-hidden className="size-3.5" /> トップへ戻る
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">
-          Eclipse UIカタログ
+          AI書面くん UIカタログ
         </h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Phase A（デザインシステム＆UI基盤）の成果物。トークンと共通部品の一覧。
@@ -386,7 +386,7 @@ export default function StyleguidePage() {
       </Section>
 
       <footer className="mt-12 border-t border-border pt-4 text-xs text-muted-foreground">
-        Eclipse — Phase A: デザインシステム＆UI基盤 ／ 次: Phase
+        AI書面くん — Phase A: デザインシステム＆UI基盤 ／ 次: Phase
         B（インタラクティブ・プロトタイプ）
       </footer>
     </main>

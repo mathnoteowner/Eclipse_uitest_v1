@@ -14,15 +14,21 @@ export default function Home() {
       </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Link href="/create" className={buttonVariants({ size: "lg" })}>
-          契約書を作成する
+          書類を作成する
         </Link>
         <Link
-          href="/edit"
+          href="/history"
           className={buttonVariants({ variant: "outline", size: "lg" })}
         >
-          文書を修正する
+          履歴を見る
         </Link>
       </div>
+      <Link
+        href="/shares"
+        className="text-xs text-muted-foreground underline hover:text-foreground"
+      >
+        発行済みの共有リンクを管理する
+      </Link>
     </main>
   );
 }
