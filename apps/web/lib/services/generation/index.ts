@@ -6,7 +6,8 @@ import type { DocType } from "@/lib/services/types";
  * 入力はすべて「マスク済み」であることが前提（この層は生のPIIを扱わない）。
  */
 export interface GenerateInput {
-  docType: DocType;
+  /** 文書タイプ（createモードでは必須。editモードは原文由来のため不要） */
+  docType?: DocType;
   mode: "create" | "edit";
   /** ガイド項目（PII項目の値はプレースホルダ済み） */
   fields: Record<string, string>;

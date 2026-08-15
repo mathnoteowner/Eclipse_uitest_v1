@@ -10,9 +10,20 @@ import { insertAtCursor } from "@/lib/edit/docx";
 import { formatDocument } from "@/lib/edit/format";
 import { cn } from "@/lib/utils";
 
+/** 親（ページ）側でundoスタックを管理する場合に渡す */
+export interface EditorUndoControl {
+  canUndo: boolean;
+  /** 直前の操作を1つ巻き戻す（ステップ単位。文字単位のCtrl+Zとは別） */
+  onUndo: () => void;
+  /** 操作（校正・挿入など）で本文を書き換える直前に現在値を積む */
+  snapshot: () => void;
+}
+
 /**
  * 契約書エディタ（Wordの契約書特化版イメージ）。
- * 清書・定型文挿入・元に戻す＋紙面風のテキスト編集。すべて端末内で完結する。
+ * 校正・定型文挿入・一つ戻る＋紙面風のテキスト編集。すべて端末内で完結する。
+ * 「一つ戻る」は操作（校正・挿入など）単位の巻き戻しで、
+ * 文字単位のundo（Ctrl+Z相当）はテキストエリア標準機能に委ねる。
  */
 export function ContractEditor({
   value,
@@ -20,6 +31,7 @@ export function ContractEditor({
   onPdf,
   onSave,
   onCopy,
+  undo,
   className,
 }: {
   value: string;
@@ -27,12 +39,28 @@ export function ContractEditor({
   onPdf?: () => void;
   onSave?: () => void;
   onCopy?: () => void;
+  undo?: EditorUndoControl;
   className?: string;
 }) {
   const { toast } = useToast();
+  // undo未指定時の内部フォールバック（1段のみ）
   const [prev, setPrev] = useState<string | null>(null);
   const [showSnippets, setShowSnippets] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  const snapshot = () => {
+    if (undo) undo.snapshot();
+    else setPrev(value);
+  };
+  const canUndo = undo ? undo.canUndo : prev != null;
+  const doUndo = () => {
+    if (undo) {
+      undo.onUndo();
+      return;
+    }
+    if (prev != null) onChange(prev);
+    setPrev(null);
+  };
 
   const format = () => {
     const next = formatDocument(value);
@@ -40,9 +68,9 @@ export function ContractEditor({
       toast("整える箇所はありませんでした");
       return;
     }
-    setPrev(value);
+    snapshot();
     onChange(next);
-    toast("清書しました", "success");
+    toast("校正しました", "success");
   };
 
   const insert = (body: string) => {
@@ -50,8 +78,9 @@ export function ContractEditor({
     const start = el?.selectionStart ?? value.length;
     const end = el?.selectionEnd ?? value.length;
     const res = insertAtCursor(value, body, start, end);
-    setPrev(value);
+    snapshot();
     onChange(res.text);
+    toast("文書に挿入しました", "success");
     requestAnimationFrame(() => {
       el?.focus();
       el?.setSelectionRange(res.caret, res.caret);
@@ -66,8 +95,9 @@ export function ContractEditor({
           size="sm"
           disabled={!value.trim()}
           onClick={format}
+          title="表記ゆれ・空白・句読点を端末内で整えます（AIは使いません）"
         >
-          <Sparkles aria-hidden /> 清書
+          <Sparkles aria-hidden /> 校正
         </Button>
         <Button
           variant={showSnippets ? "default" : "outline"}
@@ -79,18 +109,16 @@ export function ContractEditor({
         <Button
           variant="ghost"
           size="sm"
-          disabled={prev == null}
-          onClick={() => {
-            if (prev != null) onChange(prev);
-            setPrev(null);
-          }}
+          disabled={!canUndo}
+          onClick={doUndo}
+          title="直前の操作（校正・挿入・AI修正など）を1つ巻き戻します。文字入力の取り消しは Ctrl+Z をお使いください"
         >
-          <Undo2 aria-hidden /> 元に戻す
+          <Undo2 aria-hidden /> 一つ戻る
         </Button>
       </div>
 
       {showSnippets && (
-        <div className="border-b border-border px-4 pb-3 pt-1">
+        <div className="min-h-0 overflow-y-auto border-b border-border px-4 pb-3 pt-1">
           <SnippetPicker onInsert={insert} />
         </div>
       )}

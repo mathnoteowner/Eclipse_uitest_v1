@@ -183,6 +183,9 @@ export default function CreatePage() {
     setError(null);
     setStep("working");
     setStage(0);
+    // ★仮消費：失敗時は catch で払い戻す（失敗時に回数を消費しない）
+    const consumed = billing.consume();
+    setUsage(consumed.usage);
     try {
       const title = DOC_TYPE_LABELS[docType];
       // 確定的マスク：maskAs 宣言済みの値だけを置換（検出処理なし）
@@ -213,9 +216,6 @@ export default function CreatePage() {
       );
       await sleep(450);
 
-      // ★消費は生成成功後（失敗時は消費しない）
-      const consumed = billing.consume();
-      setUsage(consumed.usage);
       // ★履歴へ自動保存（端末内のみ・対応表は保存しない）
       getHistoryService().save({
         kind: "create",
@@ -234,12 +234,13 @@ export default function CreatePage() {
       setEditorOpen(false);
       setEditedText(null);
       setStep("done");
-    } catch (e) {
+    } catch {
+      // ★失敗時は払い戻す（回数を消費しない）
+      billing.refund();
+      setUsage(billing.getUsage());
       setStep("input");
       setError(
-        e instanceof Error
-          ? e.message
-          : "生成に失敗しました。もう一度お試しください。",
+        "生成に失敗しました。回数は消費されていないため、そのまま再試行できます。",
       );
     }
   }, [defs, docType, extraMasks, note, profile, step, values]);
@@ -465,6 +466,9 @@ export default function CreatePage() {
                 onClick={onPrimarySubmit}
               >
                 マスクして作成
+                <span className="tnum rounded bg-primary-foreground/15 px-1.5 py-0.5 text-[11px] font-normal">
+                  AI生成 1回
+                </span>
               </Button>
             </div>
           </section>
