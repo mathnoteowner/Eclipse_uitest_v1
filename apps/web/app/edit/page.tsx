@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Copy, FileText, History, Pencil, PenLine, Printer, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  FileText,
+  History,
+  Pencil,
+  PenLine,
+  Printer,
+  Save,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useToast } from "@/components/ui/toast";
 import { ContractEditor } from "@/components/contract-editor";
 import { DocumentCard } from "@/components/document-card";
@@ -14,11 +21,7 @@ import { EditorDrawer } from "@/components/editor-drawer";
 import { EmptyState } from "@/components/status";
 import { getHistoryService } from "@/lib/services/factory";
 import { deriveTitle } from "@/lib/services/history";
-
-const MODE_OPTIONS: { value: "create" | "edit"; label: string }[] = [
-  { value: "create", label: "新規作成" },
-  { value: "edit", label: "文書を修正" },
-];
+import { readUploadHandoff } from "@/lib/handoff";
 
 /**
  * 文書修正エディタ。
@@ -27,10 +30,20 @@ const MODE_OPTIONS: { value: "create" | "edit"; label: string }[] = [
  */
 export default function EditPage() {
   const { toast } = useToast();
-  const router = useRouter();
   const [text, setText] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [lastSavedText, setLastSavedText] = useState<string | null>(null);
+
+  // 入口（作成方法の選択）でアップロードされた書類を受け取る
+  useEffect(() => {
+    const handoff = readUploadHandoff();
+    if (handoff?.text.trim()) {
+      setText(handoff.text);
+      toast(`「${handoff.fileName}」を読み込みました`, "success");
+    }
+    // toast は Provider 由来で安定しているため初回のみで良い
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleImport = (imported: string, fileName: string) => {
     setText(imported);
@@ -80,20 +93,16 @@ export default function EditPage() {
           </Link>
         </div>
 
-        <h1 className="mt-6 text-2xl font-bold tracking-tight">文書を修正</h1>
+        <Link
+          href="/create"
+          className="mt-6 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft aria-hidden className="size-3.5" /> 書類の作成に戻る
+        </Link>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">文書を修正</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          アップロードまたは貼り付けた文書を、この端末の中だけで整えます。AIには送信しません（回数消費なし）。
+          アップロードまたは貼り付けた文書を、この端末の中だけで整えます。
         </p>
-
-        <div className="mt-5">
-          <SegmentedControl
-            value={"edit" as "create" | "edit"}
-            onChange={(m) => {
-              if (m === "create") router.push("/create");
-            }}
-            options={MODE_OPTIONS}
-          />
-        </div>
 
         <section className="mt-5 rounded-xl border border-border bg-card p-5 sm:p-6">
           <DocumentImporter onImport={handleImport} />

@@ -10,6 +10,19 @@ export interface MaskEntry {
 const PLACEHOLDER_RE = /〘[^〘〙]{1,15}〙/g;
 
 /**
+ * マスク対応表のスキーマ版数。
+ * 対応表の作られ方が変わる変更（例: 検出ベースのマスク追加）を入れるときは
+ * この版数を上げ、旧版の読み込み互換を維持すること。
+ */
+export const MASK_TABLE_VERSION = 1;
+
+/** マスク対応表（★端末内にのみ保持し、送信ペイロードに含めない） */
+export interface MaskTable {
+  version: number;
+  entries: MaskEntry[];
+}
+
+/**
  * マスク対応表。同一（種別×値）は同一プレースホルダに正規化する。
  */
 export class MaskRegistry {
@@ -35,6 +48,11 @@ export class MaskRegistry {
 
   list(): MaskEntry[] {
     return [...this.entries];
+  }
+
+  /** 版数付きの対応表を返す（端末内保持用。送信ペイロードには含めない） */
+  table(): MaskTable {
+    return { version: MASK_TABLE_VERSION, entries: this.list() };
   }
 
   get size(): number {
@@ -77,6 +95,16 @@ export function maskWholeValue(
   const v = value.trim();
   if (!v) return "";
   return registry.register(v, type).placeholder;
+}
+
+/** マスク済みテキストをプレースホルダ単位に分割する（ハイライト表示用） */
+export function splitByPlaceholders(
+  masked: string,
+): { text: string; isPlaceholder: boolean }[] {
+  const parts = masked.split(/(〘[^〘〙]{1,15}〙)/g);
+  return parts
+    .filter((p) => p.length > 0)
+    .map((p) => ({ text: p, isPlaceholder: /^〘[^〘〙]{1,15}〙$/.test(p) }));
 }
 
 export interface VerifyResult {
