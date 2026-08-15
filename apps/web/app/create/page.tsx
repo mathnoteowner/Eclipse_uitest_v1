@@ -281,10 +281,10 @@ export default function CreatePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <div className="no-print flex items-center justify-between gap-4">
+      <div className="no-print flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <Link
           href="/"
-          className="flex items-center gap-2 text-[15px] font-bold tracking-tight"
+          className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold tracking-tight"
         >
           <FileText aria-hidden className="size-5 text-primary" />
           AI書面くん
