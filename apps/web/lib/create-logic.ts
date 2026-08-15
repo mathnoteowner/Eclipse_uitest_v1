@@ -76,6 +76,37 @@ export function buildMaskPreview(
   return { masked, entries: reg.list() };
 }
 
+/**
+ * 送信前確認画面の全文プレビュー。
+ * フォーム項目のマスク結果と自由記述のマスク結果を、送信される形が
+ * 分かるように1つのテキストへまとめる（表示専用。送信には buildCreatePayload を使う）。
+ */
+export function buildConfirmPreview(
+  defs: FormFieldDef[],
+  values: Record<string, string>,
+  note: string,
+  known: KnownValue[],
+): { masked: string; entries: MaskEntry[] } {
+  const reg = new MaskRegistry();
+  const lines: string[] = [];
+  for (const def of defs) {
+    const raw = (values[def.key] ?? "").trim();
+    if (!raw) continue;
+    const masked =
+      def.maskAs === "none"
+        ? maskKnownValues(raw, known, reg)
+        : maskWholeValue(raw, MASK_AS_ENTITY[def.maskAs], reg);
+    lines.push(`${def.label}: ${masked}`);
+  }
+  const trimmedNote = note.trim();
+  let masked = lines.join("\n");
+  if (trimmedNote) {
+    const maskedNote = maskKnownValues(trimmedNote, known, reg);
+    masked += `${masked ? "\n\n" : ""}【AIへの追加指示】\n${maskedNote}`;
+  }
+  return { masked, entries: reg.list() };
+}
+
 export interface CreatePayload {
   /** AIへ送るペイロード（マスク済みの値のみを含む） */
   input: GenerateInput;

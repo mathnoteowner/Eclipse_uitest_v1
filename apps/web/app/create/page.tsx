@@ -9,6 +9,7 @@ import {
   FileText,
   FileUp,
   History,
+  Link2,
   ListChecks,
   RotateCcw,
 } from "lucide-react";
@@ -28,9 +29,10 @@ import { ErrorState } from "@/components/status";
 import { GuidedFields } from "@/components/create/guided-fields";
 import { DOC_FORMS } from "@/lib/doc-forms";
 import { withTimeout } from "@/lib/async";
+import { ShareDialog } from "@/components/share/share-dialog";
 import {
+  buildConfirmPreview,
   buildCreatePayload,
-  buildMaskPreview,
   collectKnownValues,
   computeMissing,
   resolveDisplayedText,
@@ -86,6 +88,9 @@ export default function CreatePage() {
   // 配布版はテスター向けに既定で開発マーカー非表示。開発時は ?present=0 で表示。
   const [presentMode, setPresentMode] = useState(true);
   const [cameFromResult, setCameFromResult] = useState(false);
+  // 共有リンクからの引き継ぎ（アップロード由来）は送信前マスク確認を必ず通す
+  const [uploadOrigin, setUploadOrigin] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const tableRef = useRef<MaskEntry[] | null>(null);
   const forceFailRef = useRef(false);
 
@@ -108,6 +113,7 @@ export default function CreatePage() {
     if (prefill) {
       setValues((p) => ({ ...p, ...prefill.values }));
       if (prefill.note) setNote(prefill.note);
+      if (prefill.origin === "share") setUploadOrigin(true);
     }
   }, []);
 
@@ -125,9 +131,9 @@ export default function CreatePage() {
     () => collectKnownValues(defs, values, profile, extraMasks),
     [defs, values, profile, extraMasks],
   );
-  const notePreview = useMemo(
-    () => buildMaskPreview(note.trim(), knownValues),
-    [note, knownValues],
+  const confirmPreview = useMemo(
+    () => buildConfirmPreview(defs, values, note, knownValues),
+    [defs, values, note, knownValues],
   );
   const quotaExhausted = usage.used >= usage.limit;
   const displayedText = result
@@ -258,8 +264,9 @@ export default function CreatePage() {
       return;
     }
     // フォーム値のみの送信は確定的にマスクされるため確認画面を出さない。
-    // 自由記述（AIへの追加指示）を含む場合のみ送信前確認を挟む。
-    if (note.trim()) {
+    // 自由記述（AIへの追加指示）を含む場合と、共有リンク引き継ぎ
+    // （アップロード由来）の場合は必ず送信前確認を挟む。
+    if (note.trim() || uploadOrigin) {
       setStep("confirm");
       return;
     }
@@ -477,9 +484,13 @@ export default function CreatePage() {
 
       {step === "confirm" && docType && (
         <MaskConfirm
-          description="自由記述（AIへの追加指示）を含むため、送信前に確認してください。入力済みの社名・氏名などは下記のとおりマスクされます。"
-          masked={notePreview.masked}
-          entries={notePreview.entries}
+          description={
+            uploadOrigin
+              ? "共有リンクから引き継いだ内容（アップロード由来）を含むため、送信前に必ず確認してください。マスクされる内容は下記のとおりです。"
+              : "自由記述（AIへの追加指示）を含むため、送信前に確認してください。入力済みの社名・氏名などは下記のとおりマスクされます。"
+          }
+          masked={confirmPreview.masked}
+          entries={confirmPreview.entries}
           extraMasks={extraMasks}
           onAddMask={(v) => setExtraMasks((p) => [...p, v])}
           onRemoveMask={(value) =>
@@ -563,12 +574,28 @@ export default function CreatePage() {
             </div>
           </DocumentCard>
 
-          <div className="no-print">
+          <div className="no-print flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShareOpen(true)}
+            >
+              <Link2 aria-hidden /> 共有リンクを発行
+            </Button>
             <Button variant="ghost" size="sm" onClick={resetAll}>
               <FilePlus2 aria-hidden /> 新しく作成する
             </Button>
           </div>
         </section>
+      )}
+
+      {result && (
+        <ShareDialog
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title={result.title}
+          text={displayedText}
+        />
       )}
 
       <EditorDrawer

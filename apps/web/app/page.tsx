@@ -23,6 +23,12 @@ export default function Home() {
           履歴を見る
         </Link>
       </div>
+      <Link
+        href="/shares"
+        className="text-xs text-muted-foreground underline hover:text-foreground"
+      >
+        発行済みの共有リンクを管理する
+      </Link>
     </main>
   );
 }

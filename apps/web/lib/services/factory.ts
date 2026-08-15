@@ -7,6 +7,8 @@ import { MockGenerationService } from "./generation/gen.mock";
 import type { NerService } from "./ner";
 import { MockNerService } from "./ner/ner.mock";
 import { MockProfileService, type ProfileService } from "./profile";
+import type { ShareService } from "./share";
+import { LocalShareService } from "./share/share.local";
 
 /**
  * サービス注入点。UIはこの factory 経由でのみサービスに触れる。
@@ -51,4 +53,15 @@ let history: HistoryService | null = null;
 export function getHistoryService(): HistoryService {
   history ??= new LocalHistoryService();
   return history;
+}
+
+let share: ShareService | null = null;
+
+/**
+ * 共有リンク。現状は localStorage モック（同一端末でのみ開封可能なデモ動作）。
+ * 実サーバー（id・暗号文・期限・コメントのDB）実装に差し替える際もこの境界を維持する。
+ */
+export function getShareService(): ShareService {
+  share ??= useMocks ? new LocalShareService() : notImplemented("ShareService");
+  return share;
 }

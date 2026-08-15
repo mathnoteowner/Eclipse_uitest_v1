@@ -16,6 +16,8 @@ export interface UploadHandoff {
 export interface PrefillHandoff {
   values: Record<string, string>;
   note?: string;
+  /** 引き継ぎ元。"share" は相手側の情報を含むためアップロード由来として扱う */
+  origin?: "share";
 }
 
 function write(key: string, payload: unknown): void {

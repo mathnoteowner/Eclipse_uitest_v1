@@ -7,6 +7,7 @@ import {
   Copy,
   FileText,
   History,
+  Link2,
   Pencil,
   PenLine,
   Printer,
@@ -23,6 +24,7 @@ import { EditorDrawer } from "@/components/editor-drawer";
 import { Field } from "@/components/field";
 import { MaskConfirm } from "@/components/create/mask-confirm";
 import { EmptyState, ErrorState } from "@/components/status";
+import { ShareDialog } from "@/components/share/share-dialog";
 import { UsageMeter } from "@/components/usage-meter";
 import { withTimeout } from "@/lib/async";
 import { buildEditPayload, buildEditPreview } from "@/lib/edit-logic";
@@ -63,6 +65,7 @@ export default function EditPage() {
   const [extraMasks, setExtraMasks] = useState<KnownValue[]>([]);
   const [aiPhase, setAiPhase] = useState<AiPhase>("idle");
   const [aiError, setAiError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [usage, setUsage] = useState(() => getBillingService().getUsage());
   const profile = useMemo(() => getProfileService().get(), []);
   const skipNextAutosave = useRef(true);
@@ -304,6 +307,16 @@ export default function EditPage() {
                           <Pencil aria-hidden /> 編集
                         </Button>
                         <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            saveToHistory(false);
+                            setShareOpen(true);
+                          }}
+                        >
+                          <Link2 aria-hidden /> 共有リンクを発行
+                        </Button>
+                        <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => saveToHistory(true)}
@@ -408,6 +421,13 @@ export default function EditPage() {
           </>
         )}
       </div>
+
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={deriveTitle(text)}
+        text={text}
+      />
 
       <EditorDrawer
         open={editorOpen}
